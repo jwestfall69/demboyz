@@ -35,6 +35,7 @@ private:
 
         WaveFileWriter wavWriter;
         int32_t lastVoiceDataTick = -1;
+        uint64_t steamId = 0;
     };
 
 private:
@@ -112,15 +113,30 @@ void VoiceDataWriter::WriteNetPacket(NetPacket& packet, SourceGameContext& conte
         assert(voiceData->fromClientIndex < MAX_PLAYERS);
 
         PlayerVoiceState& state = m_playerVoiceStates[voiceData->fromClientIndex];
+
+        uint64_t steamId;
+        memcpy(&steamId, voiceData->data.get(), 8);
+
+        // Cleanup if a different player is now in this client index
+        if (state.voiceDecoder && state.steamId != steamId) {
+            state.voiceDecoder->Destroy();
+            delete state.voiceDecoder;
+            state.voiceDecoder = nullptr;
+            state.wavWriter.Close();
+            state.lastVoiceDataTick = -1;
+        }
+
         if (!state.voiceDecoder)
         {
+            state.steamId = steamId;
             state.voiceDecoder = mVoiceCodecManager->CreateVoiceCodec();
             state.voiceDecoder->Init();
 
             int sampleRate = mVoiceCodecManager->GetSampleRate();
 
             // Init output file
-            std::string name = std::string(m_outputPath) + "/client_" + std::to_string((uint32_t)voiceData->fromClientIndex) + ".wav";
+            std::string name = std::string(m_outputPath) + "/community_id_" + std::to_string(state.steamId) + ".wav";
+            printf("Creating %s\n", name.c_str());
             state.wavWriter.Init(name.c_str(), sampleRate);
             assert(state.lastVoiceDataTick == -1);
             state.lastVoiceDataTick = m_curTick;
