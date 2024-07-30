@@ -46,13 +46,28 @@ FileType GetFileType(const std::string& filename)
 
 int VoiceMain(const int argc, const char* argv[])
 {
-    if (argc != 3)
+    if (argc > 3  || argc < 2 || GetExtension(argv[1]) != "dem")
     {
-        fprintf(stderr, "Usage: %s <Input>.dem <OutputDir>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <Input>.dem [<OutputDir>]\n", argv[0]);
         return -1;
     }
 
-    const char* outputDir = argv[2];
+    char* outputDir;
+    if (argc == 3)
+    {
+        outputDir = (char*)argv[2];
+    }
+    else
+    {
+        outputDir = _strdup(argv[1]);
+        char* dot = strrchr(outputDir, '.');
+        if (dot == NULL) {
+            fprintf(stderr, "bad filename!?\n");
+            return -1;
+        }
+
+        dot[0] = '\0';
+    }
 
     std::filesystem::path outputDirPath(outputDir);
     std::filesystem::create_directories(outputDirPath);
@@ -182,7 +197,7 @@ int DemboyzMain(const int argc, const char* argv[])
 
 int main(const int argc, const char* argv[])
 {
-    if (argc > 2 && GetExtension(argv[2]).empty())
+    if ((argc > 2 && GetExtension(argv[2]).empty()) || argc == 2)
     {
         return VoiceMain(argc, argv);
     }
